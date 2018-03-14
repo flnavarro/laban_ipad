@@ -1,0 +1,6 @@
+<LABAN>
+    <host_1>192.168.1.254</host_1>
+    <port_1>20000</port_1>
+    <host_2>192.168.1.255</host_2>
+    <port_2>40000</port_2>
+</LABAN>
