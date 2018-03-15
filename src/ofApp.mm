@@ -36,6 +36,7 @@ void ofApp::setup(){
     screenPos[1] = ofPoint(1024, 0);
     prompt40.load("fonts/Prompt-Regular.ttf", 40, true, true);
     prompt20.load("fonts/Prompt-Regular.ttf", 20, true, true);
+    promptExtra70.load("fonts/Prompt-ExtraBold.ttf", 70, true, true);
     loadRectSize = 210;
     loadRect[0][0] = ofPoint(250, 1155);
     loadRect[0][1] = ofPoint(560, loadRect[0][0].y);
@@ -265,8 +266,8 @@ void ofApp::checkStatusChange(){
                     }
                 } else {
                     string msg[2];
-                    msg[0] = "/" + ofToString(i) + "/state/" + ofToString(j) + "/OK";
-                    msg[1] = "/" + ofToString(i) + "/state/" + ofToString(j) + "/ERROR";
+                    msg[0] = "/" + ofToString(i) + "/state/" + ofToString(j) + "/1";
+                    msg[1] = "/" + ofToString(i) + "/state/" + ofToString(j) + "/0";
                     if(m.getAddress() == msg[0]){
                         state[i] = j;
                         state4_error = false;
@@ -371,11 +372,17 @@ void ofApp::draw(){
             ofPopStyle();
             
             // Button Highlight
-            if( state[i]==0 && bigButtonPressed[i] ){
-                ofPushStyle();
-                ofSetColor(labanColor[5], 100);
-                ofDrawRectangle(loadRect[i][0].x, loadRect[i][0].y, configRectSize, configRectSize);
-                ofPopStyle();
+            if( state[i]==0){
+                ofSetColor(labanColor[5], 255);
+                promptExtra70.drawString("BAILAR", loadRect[i][0].x + 135, loadRect[i][0].y + 122);
+
+                if( bigButtonPressed[i] ){
+                    ofPushStyle();
+                    ofSetColor(labanColor[5], 100);
+                    ofDrawRectangle(loadRect[i][0].x, loadRect[i][0].y, configRectSize, configRectSize);
+                    ofPopStyle();
+                }
+                
             } else if( state[i]==4 ){
                 if( bigButtonPressed[i] ){
                     ofPushStyle();

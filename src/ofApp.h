@@ -49,6 +49,7 @@ class ofApp : public ofxiOSApp{
         // GUI
         ofTrueTypeFont prompt40;
         ofTrueTypeFont prompt20;
+        ofTrueTypeFont promptExtra70;
         ofPoint screenPos[2];
         ofImage guiScreen[2][7];
         ofImage loadScreen[2];
