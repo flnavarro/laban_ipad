@@ -34,6 +34,7 @@ class ofApp : public ofxiOSApp{
         bool iHaveIps;
         bool iHaveIp[2];
         int state[2];
+        bool state4_error;
     
         // Xml
         ofXml xmlSettings;
@@ -49,7 +50,7 @@ class ofApp : public ofxiOSApp{
         ofTrueTypeFont prompt40;
         ofTrueTypeFont prompt20;
         ofPoint screenPos[2];
-        ofImage guiScreen[2][5];
+        ofImage guiScreen[2][7];
         ofImage loadScreen[2];
         ofImage configScreen[2];
         ofPoint loadRect[2][2];
