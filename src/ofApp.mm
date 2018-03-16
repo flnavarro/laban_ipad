@@ -20,6 +20,8 @@ void ofApp::setup(){
         loadScreen[i].load(imagePath);
         imagePath = "imagesGUI/Settings_" + ofToString(i+1) + ".png";
         configScreen[i].load(imagePath);
+        imagePath = "imagesGUI/Background_" + ofToString(i+1) + ".png";
+        bckgrd[i].load(imagePath);
         for(int j=0; j<7; j++){
             imagePath = "imagesGUI/0" + ofToString(j) + "_" + ofToString(i+1) + ".png";
             guiScreen[i][j].load(imagePath);
@@ -31,11 +33,17 @@ void ofApp::setup(){
         emailButtonPressed[i] = false;
         emailPopUpBox[i] = false;
         emailOkButtonPressed[i] = false;
+        alphaGuiImgs[i] = 255;
+        alphaDecreasing[i] = true;
+        testButtonPressed[i] = false;
+        testSent[i] = false;
+        testConfirmed[i] = false;
     }
+    alphaChangeAmount = 5;
     screenPos[0] = ofPoint(0, 0);
     screenPos[1] = ofPoint(1024, 0);
     prompt40.load("fonts/Prompt-Regular.ttf", 40, true, true);
-    prompt20.load("fonts/Prompt-Regular.ttf", 20, true, true);
+    prompt20.load("fonts/Prompt-Bold.ttf", 20, true, true);
     promptExtra70.load("fonts/Prompt-ExtraBold.ttf", 70, true, true);
     loadRectSize = 210;
     loadRect[0][0] = ofPoint(250, 1155);
@@ -50,6 +58,9 @@ void ofApp::setup(){
     loadButtonTextPos[0][1] = ofPoint(635, loadButtonTextPos[0][0].y);
     loadButtonTextPos[1][0] = ofPoint(1024 + loadButtonTextPos[0][0].x, loadButtonTextPos[0][0].y);
     loadButtonTextPos[1][1] = ofPoint(1024 + loadButtonTextPos[0][1].x, loadButtonTextPos[0][0].y);
+    testButtonSize = ofVec2f(193, 105);
+    testButtonPos[0] = ofPoint(422, 791);
+    testButtonPos[1] = ofPoint(testButtonPos[0].x + 1024 - 12, testButtonPos[0].y + 1);
     configRectSize = 550;
     configButtonTextPos[0] = ofPoint(450, 1270);
     configButtonTextPos[1] = ofPoint(1024 + configButtonTextPos[0].x, configButtonTextPos[0].y);
@@ -57,14 +68,18 @@ void ofApp::setup(){
     playAgainRect[1] = ofPoint(playAgainRect[0].x, playAgainRect[0].y);
     playAgainRectSize.x = 800;
     playAgainRectSize.y = 215;
-    emailRectSize.x = 800;
-    emailRectSize.y = 300;
-    emailRect[0] = ofPoint(120, ofGetHeight()/2 - 400);
+    emailRectSize.x = 134;
+    emailRectSize.y = 134;
+    emailRect[0] = ofPoint(441, 935);
     emailRect[1] = ofPoint(emailRect[0].x + 1024, emailRect[0].y);
+    emailInputRectSize.x = 800;
+    emailInputRectSize.y = 300;
+    emailInputRect[0] = ofPoint(120, ofGetHeight()/2 - 400);
+    emailInputRect[1] = ofPoint(emailInputRect[0].x + 1024, emailInputRect[0].y);
     emailOkRectSize.x = 100;
     emailOkRectSize.y = 60;
-    emailOkRect[0] = ofPoint(emailRect[0].x + emailRectSize.x/2 - 50, emailRect[0].y + 200);
-    emailOkRect[1] = ofPoint(emailRect[1].x + emailRectSize.x/2 - 50, emailRect[1].y + 200);
+    emailOkRect[0] = ofPoint(emailInputRect[0].x + emailInputRectSize.x/2 - 50, emailInputRect[0].y + 200);
+    emailOkRect[1] = ofPoint(emailInputRect[1].x + emailInputRectSize.x/2 - 50, emailInputRect[1].y + 200);
 
     // Xml
     string message;
@@ -156,6 +171,20 @@ void ofApp::update(){
                         loadButtonPressed[i][j] = false;
                     }
                 }
+                if( isTouching &&
+                   ofRectangle(testButtonPos[i].x, testButtonPos[i].y, testButtonSize.x, testButtonSize.y).inside(touchPos.x, touchPos.y) ){
+                    testButtonPressed[i] = true;
+                } else if( !isTouching && prevIsTouching &&
+                          ofRectangle(testButtonPos[i].x, testButtonPos[i].y, testButtonSize.x, testButtonSize.y).inside(touchPos.x, touchPos.y) ){
+                    testButtonPressed[i] = false;
+                    testConfirmed[i] = false;
+                    sendTestMessage(i);
+                } else {
+                    testButtonPressed[i] = false;
+                }
+                if( testSent[i] ){
+                    receiveTestMessage(i);
+                }
             } else if( !iHaveIp[i] && loadConfigScreen[i] ){
                 if( isTouching &&
                    ofRectangle(loadRect[i][0].x, loadRect[i][0].y, configRectSize, configRectSize).inside(touchPos.x, touchPos.y) ){
@@ -236,8 +265,31 @@ void ofApp::update(){
                     } else {
                         emailOkButtonPressed[i] = false;
                     }
+                    if( isTouching &&
+                       ( touchPos.x < emailInputRect[i].x || touchPos.x > emailInputRect[i].x + emailInputRectSize.x ||
+                         touchPos.y < emailInputRect[i].y || touchPos.y > emailInputRect[i].y + emailInputRectSize.y )){
+                           emailPopUpBox[i] = false;
+                    }
+                }
+            } else {
+                if( alphaDecreasing[i] ){
+                    if( alphaGuiImgs[i] > 0 ){
+                        alphaGuiImgs[i] -= alphaChangeAmount;
+                    } else if (alphaGuiImgs[i] <= 0){
+                        alphaDecreasing[i] = false;
+                    }
+                } else {
+                    if( alphaGuiImgs[i] < 255 ){
+                        alphaGuiImgs[i] += alphaChangeAmount;
+                    } else if (alphaGuiImgs[i] >= 255){
+                        alphaDecreasing[i] = true;
+                    }
                 }
             }
+            if( !emailPopUpBox[i] && emailPopUpBox[i]!=prevEmailPopUpBox[i] ){
+                emailInput[i]->setVisible(false);
+            }
+            prevEmailPopUpBox[i] = emailPopUpBox[i];
         }
     }
     prevIsTouching = isTouching;
@@ -251,13 +303,33 @@ void ofApp::sendEmailAddress(int pcNumber, string emailAddress){
     sender[pcNumber].sendMessage(m, false);
 }
 
+void ofApp::sendTestMessage(int pcNumber){
+    string address = "/" + ofToString(pcNumber) + "/test";
+    ofxOscMessage m;
+    m.setAddress(address);
+    sender[pcNumber].sendMessage(m, false);
+    testSent[pcNumber] = true;
+}
+
+void ofApp::receiveTestMessage(int pcNumber){
+    string msg = "/" + ofToString(pcNumber) + "/test";
+    while(receiver.hasWaitingMessages()){
+        ofxOscMessage m;
+        receiver.getNextMessage(m);
+        if( m.getAddress() == msg ){
+            testConfirmed[pcNumber] = true;
+            testSent[pcNumber] = false;
+        }
+    }
+}
+
 void ofApp::checkStatusChange(){
     // Manage OSC
     while(receiver.hasWaitingMessages()){
         ofxOscMessage m;
         receiver.getNextMessage(m);
         for(int i=0; i<2; i++){
-            for(int j=0; j<5; j++){
+            for(int j=0; j<6; j++){
                 if( j!=4 ){
                     string msg;
                     msg = "/" + ofToString(i) + "/state/" + ofToString(j);
@@ -310,16 +382,26 @@ void ofApp::draw(){
                 // Info text
                 ofPushStyle();
                 ofSetColor(labanColor[2], 255);
+                if( testConfirmed[i] ){
+                    prompt40.drawString("¡CONECTADO!", loadInfoTextPos[i][0].x + 20, loadInfoTextPos[i][0].y - 750);
+                }
                 prompt40.drawString("HOST: " + HOST[i], loadInfoTextPos[i][0].x, loadInfoTextPos[i][0].y);
                 prompt40.drawString("PORT: " + ofToString(PORT[i]), loadInfoTextPos[i][1].x, loadInfoTextPos[i][1].y);
                 ofPopStyle();
                 
-                // Button text
-                ofPushStyle();
-                ofSetColor(labanColor[5], 255);
-                prompt40.drawString("NEW IP", loadButtonTextPos[i][0].x, loadButtonTextPos[i][0].y);
-                prompt40.drawString("OK", loadButtonTextPos[i][1].x, loadButtonTextPos[i][1].y);
-                ofPopStyle();
+                // Test Button Highlight
+                if( testButtonPressed[i] ){
+                    ofPushStyle();
+                    ofSetColor(labanColor[5], 100);
+                    ofDrawRectangle(testButtonPos[i].x, testButtonPos[i].y, testButtonSize.x, testButtonSize.y);
+                    ofPopStyle();
+                }
+//                // Button text
+//                ofPushStyle();
+//                ofSetColor(labanColor[5], 255);
+//                prompt40.drawString("NEW IP", loadButtonTextPos[i][0].x, loadButtonTextPos[i][0].y);
+//                prompt40.drawString("OK", loadButtonTextPos[i][1].x, loadButtonTextPos[i][1].y);
+//                ofPopStyle();
                 
                 // Button highlight
                 for( int j=0; j<2; j++ ){
@@ -360,10 +442,20 @@ void ofApp::draw(){
 
     } else {
         for(int i=0; i<2; i++){
+            int alpha;
+            if( state[i]!=0 && state[i]!=4 ){
+                alpha = alphaGuiImgs[i];
+                ofPushStyle();
+                ofSetColor(255, 255);
+                bckgrd[i].draw(screenPos[i].x, screenPos[i].y);
+                ofPopStyle();
+            } else {
+                alpha = 255;
+            }
             ofPushStyle();
-            ofSetColor(255, 255);
+            ofSetColor(255, alpha);
             int guiIdx;
-            if( state[i] == 4 && state4_error ){
+            if( (state[i] == 4 && state4_error) || state[i] == 5 ){
                 guiIdx = state[i] + 1;
             } else {
                 guiIdx = state[i];
@@ -373,9 +465,6 @@ void ofApp::draw(){
             
             // Button Highlight
             if( state[i]==0){
-                ofSetColor(labanColor[5], 255);
-                promptExtra70.drawString("BAILAR", loadRect[i][0].x + 135, loadRect[i][0].y + 122);
-
                 if( bigButtonPressed[i] ){
                     ofPushStyle();
                     ofSetColor(labanColor[5], 100);
@@ -394,12 +483,9 @@ void ofApp::draw(){
                 if( !state4_error ){
                     if( emailButtonPressed[i] ){
                         ofPushStyle();
-                        ofSetColor(labanColor[5], 255);
+                        ofSetColor(labanColor[2], 100);
                         ofDrawRectangle(emailRect[i].x, emailRect[i].y, emailRectSize.x, emailRectSize.y);
                         ofPopStyle();
-                    } else {
-                        ofSetColor(labanColor[5], 50);
-                        ofDrawRectangle(emailRect[i].x, emailRect[i].y, emailRectSize.x, emailRectSize.y);
                     }
                     
                     if ( emailPopUpBox[i] ){
@@ -407,12 +493,12 @@ void ofApp::draw(){
                         ofSetColor(labanColor[0], 200);
                         ofDrawRectangle(screenPos[i].x, screenPos[i].y, 1024, ofGetHeight());
                         ofSetColor(labanColor[5], 255);
-                        ofDrawRectangle(emailRect[i].x, emailRect[i].y, emailRectSize.x, emailRectSize.y);
+                        ofDrawRectangle(emailInputRect[i].x, emailInputRect[i].y, emailInputRectSize.x, emailInputRectSize.y);
                         ofSetColor(labanColor[1], 255);
                         ofDrawRectangle(emailOkRect[i].x, emailOkRect[i].y, emailOkRectSize.x, emailOkRectSize.y);
                         ofSetColor(labanColor[5], 255);
-                        prompt20.drawString("SEND",
-                                            emailOkRect[i].x + 25,
+                        prompt20.drawString("ENVIAR",
+                                            emailOkRect[i].x + 10,
                                             emailOkRect[i].y + emailOkRectSize.y/2 + 5);
                         ofPopStyle();
                         // Button Highlight
