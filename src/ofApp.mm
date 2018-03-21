@@ -23,7 +23,11 @@ void ofApp::setup(){
         imagePath = "imagesGUI/Background_" + ofToString(i+1) + ".png";
         bckgrd[i].load(imagePath);
         for(int j=0; j<7; j++){
-            imagePath = "imagesGUI/0" + ofToString(j) + "_" + ofToString(i+1) + ".png";
+            if( j==0 && demoActive ){
+                imagePath = "imagesGUI/0" + ofToString(j) + "_" + ofToString(i+1) + "_Demo.png";
+            } else {
+                imagePath = "imagesGUI/0" + ofToString(j) + "_" + ofToString(i+1) + ".png";
+            }
             guiScreen[i][j].load(imagePath);
         }
         loadButtonPressed[i][0] = false;
@@ -38,6 +42,7 @@ void ofApp::setup(){
         testButtonPressed[i] = false;
         testSent[i] = false;
         testConfirmed[i] = false;
+        demoButtonPressed[i] = false;
     }
     alphaChangeAmount = 5;
     screenPos[0] = ofPoint(0, 0);
@@ -64,6 +69,10 @@ void ofApp::setup(){
     configRectSize = 550;
     configButtonTextPos[0] = ofPoint(450, 1270);
     configButtonTextPos[1] = ofPoint(1024 + configButtonTextPos[0].x, configButtonTextPos[0].y);
+    demoButtonPos[0] = ofPoint(428, 835);
+    demoButtonPos[1] = ofPoint(428 + 1024, 835);
+    demoButtonSize = ofVec2f(180, 67);
+    demoActive = false;
     playAgainRect[0] = ofPoint(100, 1150);
     playAgainRect[1] = ofPoint(playAgainRect[0].x, playAgainRect[0].y);
     playAgainRectSize.x = 800;
@@ -165,6 +174,7 @@ void ofApp::update(){
                             keybdInput[i][0]->setVisible(true);
                             keybdInput[i][1]->setVisible(true);
                         } else if( j==1 ){
+                            sendTestMessage(i);
                             iHaveIp[i] = true;
                         }
                     } else {
@@ -206,6 +216,8 @@ void ofApp::update(){
                 } else {
                     bigButtonPressed[i] = false;
                 }
+            } else {
+                receiveTestMessage(i);
             }
         }
         if( iHaveIp[0] && iHaveIp[1] ){
@@ -215,25 +227,44 @@ void ofApp::update(){
         for(int i=0; i<2; i++){
             checkStatusChange();
             if( state[i] == 0 ){
+                emailInput[i]->setVisible(false);
                 if( isTouching &&
-                   ofRectangle(screenPos[i].x, 0, 1024, 1536).inside(touchPos.x, touchPos.y) ){
+                   ofRectangle(loadRect[i][0].x, loadRect[i][0].y, configRectSize, configRectSize).inside(touchPos.x, touchPos.y) ){
                     bigButtonPressed[i] = true;
                 } else if( !isTouching && prevIsTouching &&
-                          ofRectangle(screenPos[i].x, 0, 1024, 1536).inside(touchPos.x, touchPos.y) ){
+                          ofRectangle(loadRect[i][0].x, loadRect[i][0].y, configRectSize, configRectSize).inside(touchPos.x, touchPos.y)  ){
                     bigButtonPressed[i] = false;
-                    requestStatusChange(i);
+                    requestStatusChange(i, false);
                 } else {
                     bigButtonPressed[i] = false;
                 }
+                
+                if( demoActive ){
+                    if( isTouching &&
+                       ofRectangle(demoButtonPos[i].x, demoButtonPos[i].y, demoButtonSize.x, demoButtonSize.y).inside(touchPos.x, touchPos.y) ){
+                        demoButtonPressed[i] = true;
+                    } else if( !isTouching && prevIsTouching &&
+                              ofRectangle(demoButtonPos[i].x, demoButtonPos[i].y, demoButtonSize.x, demoButtonSize.y).inside(touchPos.x, touchPos.y) ){
+                        demoButtonPressed[i] = false;
+                        requestStatusChange(i, true);
+                    } else {
+                        demoButtonPressed[i] = false;
+                    }
+                }
+                
+                if( emailPopUpBox[i] ){
+                    emailPopUpBox[i] = false;
+                }
             } else if( state[i]==4 ){
                 if( !emailPopUpBox[i] ){
+                    emailInput[i]->setVisible(false);
                     if( isTouching &&
                        ofRectangle(playAgainRect[i].x + screenPos[i].x, playAgainRect[i].y, playAgainRectSize.x, playAgainRectSize.y).inside(touchPos.x, touchPos.y) ){
                         bigButtonPressed[i] = true;
                     } else if( !isTouching && prevIsTouching &&
                               ofRectangle(playAgainRect[i].x + screenPos[i].x, playAgainRect[i].y, playAgainRectSize.x, playAgainRectSize.y).inside(touchPos.x, touchPos.y) ){
                         bigButtonPressed[i] = false;
-                        requestStatusChange(i);
+                        requestStatusChange(i, false);
                     } else {
                         bigButtonPressed[i] = false;
                     }
@@ -269,9 +300,12 @@ void ofApp::update(){
                        ( touchPos.x < emailInputRect[i].x || touchPos.x > emailInputRect[i].x + emailInputRectSize.x ||
                          touchPos.y < emailInputRect[i].y || touchPos.y > emailInputRect[i].y + emailInputRectSize.y )){
                            emailPopUpBox[i] = false;
+                           emailInput[i]->setVisible(false);
+
                     }
                 }
             } else {
+                emailInput[i]->setVisible(false);
                 if( alphaDecreasing[i] ){
                     if( alphaGuiImgs[i] > 0 ){
                         alphaGuiImgs[i] -= alphaChangeAmount;
@@ -286,10 +320,6 @@ void ofApp::update(){
                     }
                 }
             }
-            if( !emailPopUpBox[i] && emailPopUpBox[i]!=prevEmailPopUpBox[i] ){
-                emailInput[i]->setVisible(false);
-            }
-            prevEmailPopUpBox[i] = emailPopUpBox[i];
         }
     }
     prevIsTouching = isTouching;
@@ -354,14 +384,18 @@ void ofApp::checkStatusChange(){
     }
 }
 
-void ofApp::requestStatusChange(int pcNumber){
+void ofApp::requestStatusChange(int pcNumber, bool demo){
     string nextState;
-    if(state[pcNumber] != 4){
-        nextState = ofToString(state[pcNumber] + 1);
+    if( !demo ){
+        if(state[pcNumber] == 0){
+            nextState = ofToString(state[pcNumber] + 1);
+        } else if (state[pcNumber] == 4) {
+            nextState = ofToString(0);
+        }
     } else {
-        nextState = ofToString(0);
+        nextState = ofToString(5);
     }
-    
+
     string address = "/" + ofToString(pcNumber) + "/state/" + nextState;
     ofxOscMessage m;
     m.setAddress(address);
@@ -396,12 +430,6 @@ void ofApp::draw(){
                     ofDrawRectangle(testButtonPos[i].x, testButtonPos[i].y, testButtonSize.x, testButtonSize.y);
                     ofPopStyle();
                 }
-//                // Button text
-//                ofPushStyle();
-//                ofSetColor(labanColor[5], 255);
-//                prompt40.drawString("NEW IP", loadButtonTextPos[i][0].x, loadButtonTextPos[i][0].y);
-//                prompt40.drawString("OK", loadButtonTextPos[i][1].x, loadButtonTextPos[i][1].y);
-//                ofPopStyle();
                 
                 // Button highlight
                 for( int j=0; j<2; j++ ){
@@ -437,6 +465,32 @@ void ofApp::draw(){
                 ofSetColor(labanColor[5], 255);
                 ofDrawRectangle(screenPos[i].x, screenPos[i].y, 1024, 1536);
                 ofPopStyle();
+                
+                // Button text
+                ofPushStyle();
+                string msg[4];
+                msg[1] = "PC" + ofToString(i + 1) + ": IP confirmada.";
+                ofSetColor(labanColor[2], 255);
+                prompt40.drawString(msg[1], 60 + screenPos[i].x, loadInfoTextPos[i][0].y - 550);
+                if( testConfirmed[i] ){
+                    ofSetColor(labanColor[2], 255);
+                    msg[0] = "App Laban en PC" + ofToString(i + 1) + ": conectada a iPad.";
+                    if( i==0 ){
+                        msg[2] = "Para continuar confirma IP de PC" + ofToString(2) + ".";
+                    } else if( i==1 ){
+                        msg[2] = "Para continuar confirma IP de PC" + ofToString(1) + ".";
+                    }
+                    msg[3] = "";
+                } else {
+                    ofSetColor(255, 0, 10, 180);
+                    msg[0] = "App Laban en PC" + ofToString(i + 1) + ": No hay conexión.";
+                    msg[2] = "Comprueba que App Laban (PC" + ofToString(i + 1) + ") está activa";
+                    msg[3] = "y que HOST y PORT son correctos.";
+                }
+                prompt40.drawString(msg[0], 60 + screenPos[i].x, loadInfoTextPos[i][0].y - 450);
+                prompt40.drawString(msg[2], 60 + screenPos[i].x, loadInfoTextPos[i][0].y - 350);
+                prompt40.drawString(msg[3], 60 + screenPos[i].x, loadInfoTextPos[i][0].y - 300);
+                ofPopStyle();
             }
         }
 
@@ -471,7 +525,13 @@ void ofApp::draw(){
                     ofDrawRectangle(loadRect[i][0].x, loadRect[i][0].y, configRectSize, configRectSize);
                     ofPopStyle();
                 }
-                
+                if( demoActive && demoButtonPressed[i] ){
+                    ofPushStyle();
+                    ofSetColor(labanColor[5], 100);
+                    ofDrawRectangle(demoButtonPos[i].x, demoButtonPos[i].y, demoButtonSize.x, demoButtonSize.y
+                                    );
+                    ofPopStyle();
+                }
             } else if( state[i]==4 ){
                 if( bigButtonPressed[i] ){
                     ofPushStyle();

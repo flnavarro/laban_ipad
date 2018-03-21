@@ -29,7 +29,7 @@ class ofApp : public ofxiOSApp{
         ofColor labanColor[6];
     
         // States
-        void requestStatusChange(int pcNumber);
+        void requestStatusChange(int pcNumber, bool demo);
         void checkStatusChange();
         bool iHaveIps;
         bool iHaveIp[2];
@@ -71,6 +71,10 @@ class ofApp : public ofxiOSApp{
         int configRectSize;
         ofPoint configButtonTextPos[2];
         bool bigButtonPressed[2];
+        ofPoint demoButtonPos[2];
+        ofVec2f demoButtonSize;
+        bool demoButtonPressed[2];
+        bool demoActive;
         ofVec2f playAgainRectSize;
         ofPoint playAgainRect[2];
         ofVec2f emailRectSize;
